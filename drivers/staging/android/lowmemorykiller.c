@@ -83,6 +83,8 @@ static unsigned long lowmem_deathpending_timeout;
 
 static atomic_t shift_adj = ATOMIC_INIT(0);
 static short adj_max_shift = 353;
+module_param_named(adj_max_shift, adj_max_shift, short,
+	S_IRUGO | S_IWUSR);
 
 /* User knob to enable/disable adaptive lmk feature */
 static int enable_adaptive_lmk;
@@ -139,7 +141,6 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 	if (pressure >= 95) {
 		other_file = global_page_state(NR_FILE_PAGES) -
 			global_page_state(NR_SHMEM) -
-			global_page_state(NR_UNEVICTABLE) -
 			total_swapcache_pages();
 		other_free = global_page_state(NR_FREE_PAGES);
 
@@ -153,7 +154,6 @@ static int lmk_vmpressure_notifier(struct notifier_block *nb,
 
 		other_file = global_page_state(NR_FILE_PAGES) -
 			global_page_state(NR_SHMEM) -
-			global_page_state(NR_UNEVICTABLE) -
 			total_swapcache_pages();
 
 		other_free = global_page_state(NR_FREE_PAGES);
@@ -249,7 +249,8 @@ void tune_lmk_zone_param(struct zonelist *zonelist, int classzone_idx,
 			if (other_file != NULL)
 				*other_file -= zone_page_state(zone,
 							       NR_FILE_PAGES)
-					      - zone_page_state(zone, NR_SHMEM);
+					- zone_page_state(zone, NR_SHMEM)
+					- zone_page_state(zone, NR_SWAPCACHE);
 		} else if (zone_idx < classzone_idx) {
 			if (zone_watermark_ok(zone, 0, 0, classzone_idx, 0) &&
 			    other_free) {
@@ -396,7 +397,6 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 		global_page_state(NR_FILE_PAGES))
 		other_file = global_page_state(NR_FILE_PAGES) -
 						global_page_state(NR_SHMEM) -
-						global_page_state(NR_UNEVICTABLE) -
 						total_swapcache_pages();
 	else
 		other_file = 0;
